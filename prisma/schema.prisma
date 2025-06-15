@@ -1,0 +1,238 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model User {
+  id                       String              @id @default(cuid())
+  name                     String?
+  email                    String?             @unique
+  emailVerified            DateTime?
+  image                    String?
+  subscriptionId           String?
+  subscriptionPlan         String?
+  subscriptionStartDate    DateTime?
+  subscriptionEndDate      DateTime?
+  subscriptionStatus       String?
+  accounts                 Account[]
+  documents                Document[]
+  messages                 Message[]
+  collaboratorateddocuments Collaborator[]
+  razorpayOrderId         String? @unique
+
+  createdAt                DateTime            @default(now())
+  feedbacks                Feedback[]
+  flashcardAttempts        FlashcardAttempt[]
+  plan                     Plan                @default(FREE)
+  phone                    String?
+  questionResponses        QuestionResponse[]
+  searchResponses          SearchResponse[]
+ 
+
+}
+
+enum Plan {
+  FREE
+  PRO
+}
+
+model Document {
+  url                String               @unique
+  id                 String               @id @default(cuid())
+  title              String
+  owner              User                 @relation(fields: [ownerId], references: [id])
+  highlights         Highlight[]
+  collaborators      Collaborator[]       @relation("DocumentCollaborators")
+  ownerId            String
+  note               String?              @db.Text
+  messages           Message[]
+  isVectorised       Boolean              @default(false)
+  createdAt          DateTime             @default(now())
+  isUploaded         Boolean              @default(true)
+  flashcards         Flashcard[]
+  generatedQuestions GeneratedQuestion[]  @relation("DocumentToGeneratedQuestion")
+
+  questionResponses  QuestionResponse[]
+  questions          Question[]
+
+ 
+   counts             DocumentCounts?
+  
+  
+
+}
+
+model DocumentCounts {
+  id            String   @id @default(cuid())
+  documentId    String   @unique
+  document      Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  questionCount Int      @default(0)
+  researchCount Int      @default(0)
+  chatCount     Int      @default(0)
+  flashCount    Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model Question {
+  id         String             @id @default(cuid())
+  question   String
+  answer     String  
+  marks      Int
+  type       String
+  document   Document           @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  documentId String
+  createdAt  DateTime           @default(now())
+  responses  QuestionResponse[]
+}
+
+model QuestionResponse {
+  id         String   @id @default(cuid())
+  query      String
+  response   String   @db.Text
+  question   Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  questionId String
+  user       User     @relation(fields: [userId], references: [id])
+  userId     String
+  document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  documentId String
+  createdAt  DateTime @default(now())
+}
+
+enum CollaboratorRole {
+  EDITOR
+  VIEWER
+  OWNER
+}
+
+model Collaborator {
+  id         String           @id @default(cuid())
+  role       CollaboratorRole
+  document   Document         @relation("DocumentCollaborators", fields: [documentId], references: [id], onDelete: Cascade)
+  documentId String
+  userId     String
+  user       User             @relation(fields: [userId], references: [id])
+
+  @@unique([documentId, userId])
+}
+
+model Message {
+  id            String   @id @default(cuid())
+  text          String
+  createdAt     DateTime @default(now())
+  user          User?    @relation(fields: [userId], references: [id])
+  userId        String?
+  document      Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  documentId    String
+  isUserMessage Boolean
+}
+
+model SearchResponse {
+  id              String   @id @default(cuid())
+  docid           String
+  userId          String
+  query           String
+  serperResponse  Json?
+  tavilyResponse  Json?
+  serperVideos    Json?
+  serperNews      Json?
+  createdAt       DateTime @default(now())
+  user            User     @relation(fields: [userId], references: [id])
+}
+
+enum HighlightTypeEnum {
+  TEXT
+  IMAGE
+}
+
+model Highlight {
+  id                String            @id @default(cuid())
+  type              HighlightTypeEnum
+  document          Document          @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  documentId        String
+  createdAt         DateTime          @default(now())
+  boundingRectangle Cordinate?        @relation("boundingRectangle")
+  rectangles        Cordinate[]       @relation("rectangles")
+  pageNumber        Int?
+}
+
+model Cordinate {
+  id                            String    @id @default(cuid())
+  x1                            Float
+  y1                            Float
+  x2                            Float
+  y2                            Float
+  width                         Float
+  height                        Float
+  pageNumber                    Int?
+  highlightedRectangle          Highlight? @relation("rectangles", fields: [highlightedRectangleId], references: [id], onDelete: Cascade)
+  highlightedRectangleId        String?
+  highlightedBoundingRectangle  Highlight? @relation("boundingRectangle", fields: [highlightedBoundingRectangleId], references: [id], onDelete: Cascade)
+  highlightedBoundingRectangleId String?   @unique
+}
+
+model Feedback {
+  id            String   @id @default(cuid())
+  message       String   @db.Text
+  contact_email String?
+  type          String
+  createdAt     DateTime @default(now())
+  user          User?    @relation(fields: [userId], references: [id])
+  userId        String?
+}
+
+model Flashcard {
+  id                String             @id @default(cuid())
+  question          String
+  answer            String
+  document          Document           @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  documentId        String
+  createdAt         DateTime           @default(now())
+  flashcardAttempts FlashcardAttempt[]
+}
+
+model FlashcardAttempt {
+  id                String    @id @default(cuid())
+  flashcard         Flashcard @relation(fields: [flashcardId], references: [id], onDelete: Cascade)
+  flashcardId       String
+  user              User      @relation(fields: [userId], references: [id])
+  userId            String
+  createdAt         DateTime  @default(now())
+  userResponse      String
+  correctResponse   String?
+  incorrectResponse String?
+  moreInfo          String?
+}
+
+model GeneratedQuestion {
+  id            String   @id @default(cuid())
+  questionText  String
+  answer        String
+  documentId    String
+  marks         String
+  document      Document @relation("DocumentToGeneratedQuestion", fields: [documentId], references: [id], onDelete: Cascade)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
