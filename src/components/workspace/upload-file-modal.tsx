@@ -81,21 +81,10 @@ const UploadFileModal = ({
           return;
         }
 
-        const res = await fetch(url);
-        const contentType = res.headers.get("Content-Type");
-        if (contentType !== "application/pdf") {
-          toast.error("URL is not a PDF", {
-            duration: 3000,
-          });
-          return;
-        }
-
-        const fileName =
-          res.headers.get("Content-Disposition")?.split("filename=")[1] ||
-          url.split("/").pop();
+        const fileName = url.split("/").pop() || "Untitled Document";
 
         await mutateAddDocumentByLink({
-          title: fileName ?? "Untitled",
+          title: fileName,
           url,
         });
 

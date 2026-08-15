@@ -83,7 +83,7 @@ export const documentRouter = createTRPCRouter({
   getDocData: protectedProcedure
   .input(z.object({ docId: z.string() }))
   .query(async ({ ctx, input }) => {
-    const res = await ctx.prisma.document.findUnique({
+    const res = await ctx.prisma.document.findFirst({
       where: {
         id: input.docId,
         OR: [
@@ -312,7 +312,7 @@ export const documentRouter = createTRPCRouter({
     )
     .mutation(async ({ ctx, input }) => {
       try {
-        const doc = await ctx.prisma.document.findUnique({
+        const doc = await ctx.prisma.document.findFirst({
           where: {
             id: input.documentId,
             ownerId: ctx.session.user.id,
@@ -366,7 +366,7 @@ export const documentRouter = createTRPCRouter({
     )
     .mutation(async ({ ctx, input }) => {
       try {
-        const doc = await ctx.prisma.document.findUnique({
+        const doc = await ctx.prisma.document.findFirst({
           where: {
             id: input.documentId,
             ownerId: ctx.session.user.id,
@@ -406,7 +406,7 @@ export const documentRouter = createTRPCRouter({
       }),
     )
     .query(async ({ ctx, input }) => {
-      const doc = await ctx.prisma.document.findUnique({
+      const doc = await ctx.prisma.document.findFirst({
         where: {
           id: input.documentId,
           ownerId: ctx.session.user.id,
@@ -459,7 +459,7 @@ export const documentRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const doc = await ctx.prisma.document.findUnique({
+      const doc = await ctx.prisma.document.findFirst({
         where: {
           id: input.documentId,
           ownerId: ctx.session.user.id,
@@ -576,7 +576,7 @@ export const documentRouter = createTRPCRouter({
     deleteDocument: protectedProcedure
     .input(z.object({ documentId: z.string() }))
     .mutation(async ({ ctx, input }) => {
-      const document = await ctx.prisma.document.findUnique({
+      const document = await ctx.prisma.document.findFirst({
         where: { id: input.documentId, ownerId: ctx.session.user.id },
       });
   

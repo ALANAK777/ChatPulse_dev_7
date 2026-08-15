@@ -5,10 +5,17 @@ import { cn } from "@/lib/utils";
 import { ChevronLeftIcon, FileText } from "lucide-react";
 import { signIn } from "next-auth/react";
 import Link from "next/link";
+import { useRouter } from "next/router";
 import { useState } from "react";
 
 const Login = () => {
   const [isLoading, setIsLoading] = useState(false);
+  const router = useRouter();
+
+  const callbackUrl =
+    (router.query.callbackUrl as string) ||
+    (router.query.from as string) ||
+    "/f";
 
   return (
     <div className="min-h-screen w-full bg-gradient-to-b from-black to-gray-900 flex flex-col px-4 py-8 sm:px-6 md:px-8 lg:px-16">
@@ -40,7 +47,7 @@ const Login = () => {
             )}
             onClick={() => {
               setIsLoading(true);
-              signIn("google");
+              signIn("google", { callbackUrl });
             }}
             disabled={isLoading}
           >

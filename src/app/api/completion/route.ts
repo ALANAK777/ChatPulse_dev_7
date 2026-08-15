@@ -1,5 +1,5 @@
 import { env } from "@/env.mjs";
-import fireworks from "@/lib/fireworks";
+import groq from "@/lib/groq";
 import { OpenAIStream, StreamingTextResponse } from "ai";
 
 export const runtime = "nodejs";
@@ -28,10 +28,8 @@ export async function POST(req: Request) {
   } else {
     const { prompt } = await req.json();
 
-    const response = await fireworks.chat.completions.create({
-      model:
-        // "accounts/fireworks/models/llama-v2-70b-chat"
-        "accounts/fireworks/models/mixtral-8x7b-instruct",
+    const response = await groq.chat.completions.create({
+      model: "llama-3.1-8b-instant",
       messages: [
         {
           role: "system",

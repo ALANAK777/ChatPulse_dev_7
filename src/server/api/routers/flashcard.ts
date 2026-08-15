@@ -13,7 +13,7 @@ export const flashcardRouter = createTRPCRouter({
       }),
     )
     .query(async ({ ctx, input }) => {
-      const res = await ctx.prisma.document.findUnique({
+      const res = await ctx.prisma.document.findFirst({
         where: {
           id: input.documentId,
           OR: [
@@ -72,7 +72,7 @@ export const flashcardRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const res = await ctx.prisma.document.findUnique({
+      const res = await ctx.prisma.document.findFirst({
         where: {
           id: input.documentId,
           OR: [

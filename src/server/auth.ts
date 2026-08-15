@@ -29,10 +29,11 @@ async function sendToMakeWebhook(userData: any) {
 export const authOptions: NextAuthOptions = {
   callbacks: {
     async signIn({ user, account, profile, email, credentials }) {
-      if (user) {
-        const userData = {
-          ...user,
-          body: `<div style="font-family: Arial, sans-serif; color: #333;">
+      try {
+        if (user && user.email) {
+          const userData = {
+            ...user,
+            body: `<div style="font-family: Arial, sans-serif; color: #333;">
   <h2 style="color: #2E86C1;">Hey {{name}}, Your Files Are Waiting for You! 📄</h2>
   
   <p>We noticed it's been a little while since you've last visited Chatpulse, and your files miss you! Don’t worry, they’re all safe and sound – just waiting for you to dive back in.</p>
@@ -55,17 +56,20 @@ export const authOptions: NextAuthOptions = {
   The Chatpulse Team 💡</p>
 </div>
 `,
-          subject: "Your Files Are Missing You! Chat with Them Again ⚡",
-          timestamp : new Date().toISOString()
-        };
-        const existingUser = await prisma.user.findUnique({
-          where: { email: user.email! },
-        });
+            subject: "Your Files Are Missing You! Chat with Them Again ⚡",
+            timestamp: new Date().toISOString()
+          };
+          const existingUser = await prisma.user.findUnique({
+            where: { email: user.email },
+          });
 
-        if (!existingUser) {
-          // This is a new user, send their details to the webhook
-          await sendToMakeWebhook(userData);
+          if (!existingUser) {
+            // This is a new user, send their details to the webhook
+            await sendToMakeWebhook(userData);
+          }
         }
+      } catch (err) {
+        console.error("Error in signIn callback:", err);
       }
       return true;
     },    async session({ session, token }) {
@@ -81,15 +85,19 @@ export const authOptions: NextAuthOptions = {
     },
 
     async jwt({ token, user }) {
+      const email = token.email || user?.email;
+      if (!email) return token;
+
       const dbUser = await prisma.user.findFirst({
         where: {
-          email: token.email,
+          email,
         },
       });
 
       if (!dbUser) {
         if (user) {
           token.id = user?.id;
+          token.email = user?.email;
         }
         return token;
       }
@@ -113,6 +121,7 @@ export const authOptions: NextAuthOptions = {
   },
 
   adapter: PrismaAdapter(prisma),
+  debug: process.env.NODE_ENV === "development",
   providers: [
     GoogleProvider({
       clientId: env.GOOGLE_CLIENT_ID,

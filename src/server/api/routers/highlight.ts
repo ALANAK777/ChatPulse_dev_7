@@ -37,7 +37,7 @@ export const highlightRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const doc = await ctx.prisma.document.findUnique({
+      const doc = await ctx.prisma.document.findFirst({
         where: {
           id: input.documentId,
           OR: [
@@ -120,7 +120,7 @@ export const highlightRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const doc = await ctx.prisma.document.findUnique({
+      const doc = await ctx.prisma.document.findFirst({
         where: {
           id: input.documentId,
           OR: [
@@ -175,7 +175,7 @@ export const highlightRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const doc = await ctx.prisma.document.findUnique({
+      const doc = await ctx.prisma.document.findFirst({
         where: {
           id: input.documentId,
           OR: [

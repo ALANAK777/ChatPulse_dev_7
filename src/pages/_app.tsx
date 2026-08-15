@@ -11,12 +11,28 @@ import { useRouter } from "next/router";
 import { SEO } from "../../next-seo.config";
 import Script from 'next/script';
 
+import { useEffect } from "react";
+
 const MyApp: AppType<{ session: Session | null }> = ({
   Component,
   pageProps: { session, ...pageProps },
 }) => {
   const router = useRouter();
   const isReader = router.pathname.startsWith("/f/");
+
+  useEffect(() => {
+    const handleError = (e: ErrorEvent) => {
+      if (
+        e.message?.includes("Debounced method called with different contexts") ||
+        e.message?.includes("play() request was interrupted")
+      ) {
+        e.stopImmediatePropagation();
+        e.preventDefault();
+      }
+    };
+    window.addEventListener("error", handleError);
+    return () => window.removeEventListener("error", handleError);
+  }, []);
 
   return (
     <SessionProvider session={session}>

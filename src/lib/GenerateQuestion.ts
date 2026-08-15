@@ -1,4 +1,4 @@
-import fireworks from "@/lib/fireworks";
+import groq from "@/lib/groq";
 import { PDFLoader } from "@langchain/community/document_loaders/fs/pdf";
 import { RecursiveCharacterTextSplitter } from "langchain/text_splitter";
 
@@ -31,17 +31,24 @@ export const generateQuestions = async (
 
   const res = await Promise.allSettled(
     docContents.map(async (doc) => {
-      return fireworks.chat.completions.create({
-        model: "accounts/fireworks/models/mixtral-8x7b-instruct",
+      return groq.chat.completions.create({
+        model: "llama-3.3-70b-versatile",
         max_tokens: 2048,
         messages: [
           {
             role: "system",
-            content: `You are an advanced AI assistant specialized in creating educational questions. Your task is to generate a mix of 2-mark and 5-mark questions and answers based on the provided text. For 2-mark questions, focus on factual recall and brief explanations. For 5-mark questions, emphasize deeper understanding, application of concepts, and critical thinking. Create clear, concise, and relevant questions and answers. Provide the output in JSON Array format, with each question object containing 'question', 'marks','answer' and 'type' fields.`,
+            content: `You are an advanced AI assistant specialized in creating educational questions. Your task is to generate a mix of 2-mark and 5-mark questions and answers based on the provided text.
+Provide the output strictly as a JSON Array of objects, where each object has 'question', 'marks', 'answer', and 'type' fields.
+Example format:
+[
+  {"question": "What is X?", "marks": 2, "answer": "X is...", "type": "short"},
+  {"question": "Explain Y in detail.", "marks": 5, "answer": "Y is...", "type": "long"}
+]
+Do not include any markdown fences or conversational text outside the JSON array.`,
           },
           {
             role: "user",
-            content: `Create  5-mark questions and answers for the following text:\n\n ${doc}`,
+            content: `Create questions and answers for the following text:\n\n ${doc}`,
           },
         ],
       });
@@ -50,27 +57,35 @@ export const generateQuestions = async (
 
   const newRes = res.map((item) =>
     item.status === "fulfilled"
-      ? item.value.choices[0]?.message.content?.replaceAll("\n", "")
+      ? item.value.choices[0]?.message.content?.trim() || ""
       : "",
   );
 
   const formatted = newRes.map((item) => {
-    if (!item) {
-      return "";
-    }
+    if (!item) return [];
 
     try {
-      return JSON.parse(item);
+      let jsonStr = item.trim();
+      if (jsonStr.startsWith("```")) {
+        jsonStr = jsonStr.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "");
+      }
+      const parsed = JSON.parse(jsonStr);
+      if (Array.isArray(parsed)) return parsed;
+      if (typeof parsed === "object" && parsed !== null) {
+        if (Array.isArray(parsed.questions)) return parsed.questions;
+      }
+      return [];
     } catch (err: any) {
-      console.log(err.message);
-      return "";
+      console.log("Question JSON parse error:", err.message, "Raw content:", item);
+      return [];
     }
   });
 
-  const flatArr: QuestionType[] = formatted.flat().filter((item) => {
-    if (!item.question || !item.marks || !item.type) {
-      return false;
-    }
+  const flatArr: QuestionType[] = formatted.flat().filter((item: any) => {
+    if (!item || typeof item !== "object") return false;
+    if (!item.question || !item.answer) return false;
+    item.marks = item.marks || 5;
+    item.type = item.type || "short";
     return true;
   });
   return flatArr;

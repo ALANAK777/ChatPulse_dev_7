@@ -24,26 +24,30 @@ export const vectoriseDocument = async (
     );
   }
 
-  const pinecone = getPineconeClient();
-  const pineconeIndex = (await pinecone).Index("docxpert");
+  try {
+    const pinecone = getPineconeClient();
+    const pineconeIndex = (await pinecone).Index("docxpert");
 
-  const combinedData = pageLevelDocs.map((document) => {
-    return {
-      ...document,
-      metadata: {
-        fileId: newFileId,
-      },
-      dataset: "pdf",
-    };
-  });
+    const combinedData = pageLevelDocs.map((document) => {
+      return {
+        ...document,
+        metadata: {
+          fileId: newFileId,
+        },
+        dataset: "pdf",
+      };
+    });
 
-  const embeddings = new HuggingFaceInferenceEmbeddings({
-    apiKey: env.HUGGINGFACE_API_KEY,
-  });
+    const embeddings = new HuggingFaceInferenceEmbeddings({
+      apiKey: env.HUGGINGFACE_API_KEY,
+    });
 
-  await PineconeStore.fromDocuments(combinedData, embeddings, {
-    pineconeIndex,
-  });
+    await PineconeStore.fromDocuments(combinedData, embeddings, {
+      pineconeIndex,
+    });
+  } catch (err: any) {
+    console.warn("Vectorisation warning (Pinecone/HuggingFace):", err?.message || err);
+  }
 
   await prisma.document.update({
     where: {

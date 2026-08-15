@@ -1,5 +1,5 @@
 import { env } from "@/env.mjs";
-import fireworks from "@/lib/fireworks";
+import groq from "@/lib/groq";
 import { getPineconeClient } from "@/lib/pinecone";
 import { authOptions } from "@/server/auth";
 import { prisma } from "@/server/db";
@@ -8,6 +8,7 @@ import { HuggingFaceInferenceEmbeddings } from "@langchain/community/embeddings/
 import { PineconeStore } from "@langchain/pinecone";
 import { getServerSession } from "next-auth";
 
+import { PDFLoader } from "@langchain/community/document_loaders/fs/pdf";
 import { ChatCompletionMessageParam } from 'openai/resources/chat';
 export const runtime = 'nodejs';
 function formatMessages(messages: any[], systemContent: string): ChatCompletionMessageParam[] {
@@ -62,23 +63,43 @@ export async function POST(req: Request, res: Response) {
 
   if (!doc) return new Response("Not found", { status: 404 });
 
-  const embeddings = new HuggingFaceInferenceEmbeddings({
-    apiKey: env.HUGGINGFACE_API_KEY,
-  });
+  let results: any[] = [];
+  try {
+    const embeddings = new HuggingFaceInferenceEmbeddings({
+      apiKey: env.HUGGINGFACE_API_KEY,
+    });
 
-  const pinecone = getPineconeClient();
-  const pineconeIndex = (await pinecone).Index("docxpert");
+    const pinecone = getPineconeClient();
+    const pineconeIndex = (await pinecone).Index("docxpert");
 
-  const vectorStore = await PineconeStore.fromExistingIndex(embeddings, {
-    pineconeIndex,
-    filter: {
-      fileId: docId as string,
-    },
-  });
+    const vectorStore = await PineconeStore.fromExistingIndex(embeddings, {
+      pineconeIndex,
+      filter: {
+        fileId: docId as string,
+      },
+    });
 
-  const lastMessage = messages.at(-1).content;
+    const lastMessage = messages.at(-1).content;
+    results = await vectorStore.similaritySearch(lastMessage, 4);
+  } catch (err: any) {
+    console.warn("Vector similarity search warning (HuggingFace/Pinecone):", err?.message || err);
+  }
 
-  const results = await vectorStore.similaritySearch(lastMessage, 4);
+  let contextText = "";
+  if (results.length > 0) {
+    contextText = results.map((r) => r.pageContent).join("\n\n");
+  } else {
+    try {
+      const pdfRes = await fetch(doc.url);
+      const blob = await pdfRes.blob();
+      const loader = new PDFLoader(blob);
+      const pdfDocs = await loader.load();
+      contextText = pdfDocs.map((p) => p.pageContent).join("\n\n").slice(0, 12000);
+    } catch (e: any) {
+      console.warn("Direct PDF text fallback warning:", e?.message || e);
+      contextText = `Document Title: ${doc.title}`;
+    }
+  }
 
   const systemContent = `AI assistant is a brand new, powerful, human-like artificial intelligence.
   The traits of AI include expert knowledge, helpfulness, cleverness, and articulateness.
@@ -86,18 +107,15 @@ export async function POST(req: Request, res: Response) {
   AI is always friendly, kind, and inspiring, and he is eager to provide vivid and thoughtful responses to the user.
   AI has the sum of all knowledge in their brain, and is able to accurately answer nearly any question about any topic in conversation.
   START CONTEXT BLOCK
-  ${results.map((r) => r.pageContent).join("\n\n")}
+  ${contextText}
   END OF CONTEXT BLOCK
   AI assistant will take into account any CONTEXT BLOCK that is provided in a conversation.
-  If the context does not provide the answer to question, the AI assistant will say, "I'm sorry, but I don't know the answer to that question".
-  AI assistant will not apologize for previous responses, but instead will indicated new information was gained.
-  AI assistant will not invent anything that is not drawn directly from the context.
   AI assistant will answer the questions in Markdown format with clear headings and lists.`;
 
   const formattedMessages = formatMessages(messages, systemContent);
 
-  const response = await fireworks.chat.completions.create({
-    model: "accounts/fireworks/models/mixtral-8x7b-instruct",
+  const response = await groq.chat.completions.create({
+    model: "llama-3.3-70b-versatile",
     temperature: 0,
     stream: true,
     max_tokens: 4096,

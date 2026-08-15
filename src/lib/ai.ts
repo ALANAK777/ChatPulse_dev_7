@@ -1,4 +1,4 @@
-import fireworks from "@/lib/fireworks";
+import groq from "@/lib/groq";
 import { PDFLoader } from "@langchain/community/document_loaders/fs/pdf";
 import { RecursiveCharacterTextSplitter } from "langchain/text_splitter";
 
@@ -26,8 +26,8 @@ export const generateSummary = async (fileUrl: string, maxPagesAllowed: number) 
   let allKeywords: string[] = [];
 
   for (const chunk of chunks) {
-    const res = await fireworks.chat.completions.create({
-      model: "accounts/fireworks/models/mixtral-8x7b-instruct",
+    const res = await groq.chat.completions.create({
+      model: "llama-3.1-8b-instant",
       max_tokens: 2048,
       messages: [
         {

@@ -10,7 +10,7 @@ export const messageRouter = createTRPCRouter({
       }),
     )
     .query(async ({ ctx, input }) => {
-      const res = await ctx.prisma.document.findUnique({
+      const res = await ctx.prisma.document.findFirst({
         where: {
           id: input.docId,
           OR: [

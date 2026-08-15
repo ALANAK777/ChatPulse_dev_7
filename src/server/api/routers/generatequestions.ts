@@ -9,7 +9,7 @@ export const questionRouter = createTRPCRouter({
   generateResponse: protectedProcedure
     .input(z.object({ documentId: z.string(), question: z.string() }))
     .mutation(async ({ ctx, input }) => {
-      const res = await ctx.prisma.document.findUnique({
+      const res = await ctx.prisma.document.findFirst({
         where: {
           id: input.documentId,
           OR: [

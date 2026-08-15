@@ -1,4 +1,4 @@
-import fireworks from "@/lib/fireworks";
+import groq from "@/lib/groq";
 import { authOptions } from "@/server/auth";
 import { prisma } from "@/server/db";
 import { OpenAIStream, StreamingTextResponse } from "ai";
@@ -55,11 +55,16 @@ export async function POST(req: Request, res: Response) {
   Question: ${flashcard.question}
   Correct answer: ${flashcard.answer}`;
 
-  const response = await fireworks.completions.create({
-    model: "accounts/fireworks/models/mixtral-8x7b-instruct",
+  const response = await groq.chat.completions.create({
+    model: "llama-3.3-70b-versatile",
     max_tokens: 1000,
     stream: true,
-    prompt: reqPrompt,
+    messages: [
+      {
+        role: "user",
+        content: reqPrompt,
+      },
+    ],
   });
 
   const stream = OpenAIStream(response, {
